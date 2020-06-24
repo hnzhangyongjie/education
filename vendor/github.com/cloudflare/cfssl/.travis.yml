@@ -59,9 +59,9 @@ script:
 notifications:
   email:
     recipients:
-    - cbroglie@cloudflare.com
-    - kyle@cloudflare.com
     - nick@cloudflare.com
+    - zi@cloudflare.com
+    - kyle@cloudflare.com
     on_success: never
     on_failure: change
 env:

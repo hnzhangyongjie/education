@@ -19,16 +19,25 @@
 package mock_helloworld_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 	helloworld "google.golang.org/grpc/examples/helloworld/helloworld"
 	hwmock "google.golang.org/grpc/examples/helloworld/mock_helloworld"
+	"google.golang.org/grpc/internal/grpctest"
 )
+
+type s struct {
+	grpctest.Tester
+}
+
+func Test(t *testing.T) {
+	grpctest.RunSubTests(t, s{})
+}
 
 // rpcMsg implements the gomock.Matcher interface
 type rpcMsg struct {
@@ -47,7 +56,7 @@ func (r *rpcMsg) String() string {
 	return fmt.Sprintf("is %s", r.msg)
 }
 
-func TestSayHello(t *testing.T) {
+func (s) TestSayHello(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockGreeterClient := hwmock.NewMockGreeterClient(ctrl)

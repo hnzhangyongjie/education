@@ -15,17 +15,19 @@ import (
 
 	fabmocks "github.com/hyperledger/fabric-sdk-go/pkg/fab/mocks"
 
-	pb "github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
-var testStream = func(grpcconn *grpc.ClientConn) (grpc.ClientStream, error) {
-	return pb.NewDeliverClient(grpcconn).Deliver(context.Background())
+var testStream = func(grpcconn *grpc.ClientConn) (grpc.ClientStream, func(), error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := pb.NewDeliverClient(grpcconn).Deliver(ctx)
+	return stream, cancel, err
 }
 
-var invalidStream = func(grpcconn *grpc.ClientConn) (grpc.ClientStream, error) {
-	return nil, errors.New("simulated error creating stream")
+var invalidStream = func(grpcconn *grpc.ClientConn) (grpc.ClientStream, func(), error) {
+	return nil, nil, errors.New("simulated error creating stream")
 }
 
 func TestStreamConnection(t *testing.T) {

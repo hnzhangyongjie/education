@@ -44,7 +44,7 @@ func TestSetup(t *testing.T) {
 	}
 }
 
-// Ensure that tries increments as expected.
+// Ensure that tries incremenets as expected.
 func TestTries(t *testing.T) {
 	b := NewWithoutJitter(5, 1)
 

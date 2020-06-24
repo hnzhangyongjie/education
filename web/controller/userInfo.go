@@ -4,7 +4,7 @@
 
 package controller
 
-import "github.com/kongyixueyuan.com/education/service"
+import "github.com/renyinew/education/service"
 
 type Application struct {
 	Setup *service.ServiceSetup

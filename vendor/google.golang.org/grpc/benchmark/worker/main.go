@@ -16,9 +16,12 @@
  *
  */
 
+// Binary worker implements the benchmark worker that can turn into a benchmark
+// client or server.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -29,7 +32,6 @@ import (
 	"strconv"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	testpb "google.golang.org/grpc/benchmark/grpc_testing"
 	"google.golang.org/grpc/codes"
@@ -71,6 +73,7 @@ func (byteBufCodec) String() string {
 // workerServer implements WorkerService rpc handlers.
 // It can create benchmarkServer or benchmarkClient on demand.
 type workerServer struct {
+	testpb.UnimplementedWorkerServiceServer
 	stop       chan<- bool
 	serverPort int
 }

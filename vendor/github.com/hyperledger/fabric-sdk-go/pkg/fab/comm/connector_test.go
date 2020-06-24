@@ -14,7 +14,7 @@ import (
 	"time"
 	"unsafe"
 
-	pb "github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,6 +91,27 @@ func TestDialAfterClose(t *testing.T) {
 	assert.Equal(t, connectivity.Shutdown, conn1.GetState(), "connection should be shutdown")
 	_, err = connector.DialContext(ctx, endorserAddr[0], grpc.WithInsecure())
 	assert.Error(t, err, "expecting error when dialing after connector is closed")
+}
+
+func TestDialAfterRestart(t *testing.T) {
+	srvs, addrs, err := startEndorsers(1, endorserAddress)
+	require.NoError(t, err)
+	require.Len(t, addrs, 1)
+
+	addr := addrs[0]
+
+	connector := NewCachingConnector(normalSweepTime, normalIdleTime)
+
+	conn1, err := connector.DialContext(context.Background(), addr, grpc.WithInsecure())
+	require.NoError(t, err)
+	require.NotNil(t, conn1)
+	srvs[0].Stop()
+	time.Sleep(time.Second)
+
+	conn2, err := connector.DialContext(context.Background(), addr, grpc.WithInsecure())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), connectivity.TransientFailure.String())
+	require.Nil(t, conn2)
 }
 
 func TestConnectorHappyFlushNumber1(t *testing.T) {

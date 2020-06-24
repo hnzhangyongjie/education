@@ -14,7 +14,7 @@ import (
 
 	eventmocks "github.com/hyperledger/fabric-sdk-go/pkg/fab/events/mocks"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/mocks"
-	pb "github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"google.golang.org/grpc"
 )
 
@@ -33,9 +33,9 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Error starting events listener %s", err))
 	}
 
-	testServer = eventmocks.NewMockEventhubServer()
+	testServer = eventmocks.NewMockDeliverServer()
 
-	pb.RegisterEventsServer(grpcServer, testServer)
+	pb.RegisterDeliverServer(grpcServer, testServer)
 
 	go grpcServer.Serve(lis)
 

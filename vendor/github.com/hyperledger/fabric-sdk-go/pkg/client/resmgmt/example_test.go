@@ -7,17 +7,22 @@ package resmgmt
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	sdkCtx "github.com/hyperledger/fabric-sdk-go/pkg/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/mocks"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/resource"
 	mspmocks "github.com/hyperledger/fabric-sdk-go/pkg/msp/test/mockmsp"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric-sdk-go/test/metadata"
 )
 
 func Example() {
@@ -28,8 +33,9 @@ func Example() {
 		fmt.Println("failed to create client")
 	}
 
-	// Read channel configuration
-	r, err := os.Open(channelConfig)
+	// Read channel configuration tx
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	r, err := os.Open(channelConfigTxPath)
 	if err != nil {
 		fmt.Printf("failed to open channel config: %s\n", err)
 	}
@@ -191,7 +197,8 @@ func ExampleClient_SaveChannel() {
 		fmt.Printf("failed to create client: %s\n", err)
 	}
 
-	r, err := os.Open(channelConfig)
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	r, err := os.Open(channelConfigTxPath)
 	if err != nil {
 		fmt.Printf("failed to open channel config: %s\n", err)
 	}
@@ -218,7 +225,8 @@ func ExampleClient_SaveChannel_withOrdererEndpoint() {
 		fmt.Printf("failed to create client: %s\n", err)
 	}
 
-	r, err := os.Open(channelConfig)
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	r, err := os.Open(channelConfigTxPath)
 	if err != nil {
 		fmt.Printf("failed to open channel config: %s\n", err)
 	}
@@ -385,10 +393,34 @@ func mockClientProvider() context.ClientProvider {
 
 	ctx := mocks.NewMockContext(mspmocks.NewMockSigningIdentity("test", "Org1MSP"))
 
+	configlBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "config.block"))
+	if err != nil {
+		fmt.Printf("opening config.block file failed: %s\n", err)
+	}
+	configBlock := &common.Block{}
+	err = proto.Unmarshal(configlBlockBytes, configBlock)
+	if err != nil {
+		fmt.Printf("unmarshalling configBlock failed: %s\n", err)
+	}
+
 	// Create mock orderer with simple mock block
 	orderer := mocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(mocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		configBlock,
+		common.Status_SUCCESS,
+	)
+	orderer.EnqueueForSendDeliver(
+		configBlock,
+		common.Status_SUCCESS,
+	)
+	orderer.EnqueueForSendDeliver(
+		configBlock,
+		common.Status_SUCCESS,
+	)
+	orderer.EnqueueForSendDeliver(
+		configBlock,
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 
 	setupCustomOrderer(ctx, orderer)

@@ -24,13 +24,13 @@
 package alts
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	core "google.golang.org/grpc/credentials/alts/internal"
 	"google.golang.org/grpc/credentials/alts/internal/handshaker"
@@ -42,7 +42,7 @@ import (
 const (
 	// hypervisorHandshakerServiceAddress represents the default ALTS gRPC
 	// handshaker service address in the hypervisor.
-	hypervisorHandshakerServiceAddress = "metadata.google.internal:8080"
+	hypervisorHandshakerServiceAddress = "metadata.google.internal.:8080"
 	// defaultTimeout specifies the server handshake timeout.
 	defaultTimeout = 30.0 * time.Second
 	// The following constants specify the minimum and maximum acceptable
@@ -197,14 +197,14 @@ func (g *altsTC) ClientHandshake(ctx context.Context, addr string, rawConn net.C
 		MinRpcVersion: minRPCVersion,
 	}
 	chs, err := handshaker.NewClientHandshaker(ctx, hsConn, rawConn, opts)
+	if err != nil {
+		return nil, nil, err
+	}
 	defer func() {
 		if err != nil {
 			chs.Close()
 		}
 	}()
-	if err != nil {
-		return nil, nil, err
-	}
 	secConn, authInfo, err := chs.ClientHandshake(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -240,14 +240,14 @@ func (g *altsTC) ServerHandshake(rawConn net.Conn) (_ net.Conn, _ credentials.Au
 		MinRpcVersion: minRPCVersion,
 	}
 	shs, err := handshaker.NewServerHandshaker(ctx, hsConn, rawConn, opts)
+	if err != nil {
+		return nil, nil, err
+	}
 	defer func() {
 		if err != nil {
 			shs.Close()
 		}
 	}()
-	if err != nil {
-		return nil, nil, err
-	}
 	secConn, authInfo, err := shs.ServerHandshake(ctx)
 	if err != nil {
 		return nil, nil, err

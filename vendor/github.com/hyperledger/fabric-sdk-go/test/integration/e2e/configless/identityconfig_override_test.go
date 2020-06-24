@@ -16,8 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// identityconfig_override_test.go is an example of programmatically configuring the sdk by injecting instances that implement IdentityConfig's functions (representing the sdk's msp configs)
-// for the sake of overriding IdentityConfig integration tests, the structure variables below are similar to what is found in /test/fixtures/config/config_test.yaml
+// identityconfig_override_test.go is an example of programmatically configuring the client by injecting instances that implement IdentityConfig's functions (representing the client's msp configs)
+// for the sake of overriding IdentityConfig integration tests, the structure variables below are similar to what is found in /test/fixtures/config/config_e2e.yaml
 // application developers can fully override these functions to load configs in any way that suit their application need
 
 var (
@@ -71,6 +71,7 @@ func getMSPCAConfig(caConfig *caConfig) (*msp.CAConfig, error) {
 	}
 
 	return &msp.CAConfig{
+		ID:               caConfig.ID,
 		URL:              caConfig.URL,
 		Registrar:        caConfig.Registrar,
 		CAName:           caConfig.CAName,
@@ -115,14 +116,14 @@ func getCAConfig(networkConfig *fab.NetworkConfig, org string) (*msp.CAConfig, b
 		return nil, false
 	}
 	//for now, we're only loading the first Cert Authority by default. TODO add logic to support passing the Cert Authority ID needed by the client.
-	certAuthorityName := networkConfig.Organizations[strings.ToLower(org)].CertificateAuthorities[0]
+	caID := networkConfig.Organizations[strings.ToLower(org)].CertificateAuthorities[0]
 
-	if certAuthorityName == "" {
+	if caID == "" {
 		return nil, false
 	}
 
 	caConfigs := newCAsConfig()
-	caConfig, ok := caConfigs[strings.ToLower(certAuthorityName)]
+	caConfig, ok := caConfigs[strings.ToLower(caID)]
 	if !ok {
 		// EntityMatchers are not supported in this implementation. If needed, uncomment the below lines
 		//caConfig, mappedHost := m.tryMatchingCAConfig(networkConfig, strings.ToLower(certAuthorityName))

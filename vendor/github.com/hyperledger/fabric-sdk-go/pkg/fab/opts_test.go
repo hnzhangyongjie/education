@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
+	commtls "github.com/hyperledger/fabric-sdk-go/pkg/core/config/comm/tls"
 )
 
 var (
@@ -27,7 +28,6 @@ var (
 	m11 = &mockChannelPeers{}
 	m12 = &mockChannelOrderers{}
 	m13 = &mockTLSCACertPool{}
-	m14 = &mockEventServiceType{}
 	m15 = &mockTLSClientCerts{}
 	m16 = &mockCryptoConfigPath{}
 )
@@ -59,7 +59,7 @@ func TestCreateCustomEndpointConfig(t *testing.T) {
 	if eco == nil {
 		t.Fatal("build ConfigEndpointOption returned is nil")
 	}
-	tmout := eco.Timeout(fab.EndorserConnection)
+	tmout := eco.Timeout(fab.PeerConnection)
 	if tmout < 0 {
 		t.Fatalf("EndpointConfig was supposed to have Timeout function overridden from Options but was not %+v. Timeout: %s", eco, tmout)
 	}
@@ -72,7 +72,7 @@ func TestCreateCustomEndpointConfig(t *testing.T) {
 
 func TestCreateCustomEndpointConfigRemainingFunctions(t *testing.T) {
 	// test other sub interface functions
-	endpointConfigOption, err := BuildConfigEndpointFromOptions(m11, m12, m13, m14, m15, m16)
+	endpointConfigOption, err := BuildConfigEndpointFromOptions(m11, m12, m13, m15, m16)
 	if err != nil {
 		t.Fatalf("BuildConfigEndpointFromOptions returned unexpected error %s", err)
 	}
@@ -85,10 +85,7 @@ func TestCreateCustomEndpointConfigRemainingFunctions(t *testing.T) {
 		t.Fatal("build ConfigEndpointOption returned is nil")
 	}
 	// verify that their functions are available
-	p, ok := eco.ChannelPeers("")
-	if !ok {
-		t.Fatal("ChannelPeers expected to succeed")
-	}
+	p := eco.ChannelPeers("")
 	if len(p) != 1 {
 		t.Fatalf("ChannelPeers did not return expected interface value. Expected: 1 ChannelPeer, Received: %d", len(p))
 	}
@@ -131,7 +128,7 @@ func TestCreateCustomEndpointConfigWithSomeDefaultFunctions(t *testing.T) {
 	endpointConfigOptionWithSomeDefaults := UpdateMissingOptsWithDefaultConfig(eco, m0)
 
 	// test if options updated interfaces with options are still working
-	tmout := endpointConfigOptionWithSomeDefaults.Timeout(fab.EndorserConnection)
+	tmout := endpointConfigOptionWithSomeDefaults.Timeout(fab.PeerConnection)
 	expectedTimeout := 10 * time.Second
 	if tmout != expectedTimeout {
 		t.Fatalf("EndpointConfig was supposed to have Timeout function overridden from Options but was not %+v. Timeout: [expected: %s, received: %s]", eco, expectedTimeout, tmout)
@@ -186,7 +183,7 @@ func TestIsEndpointConfigFullyOverridden(t *testing.T) {
 	}
 
 	// now try with all opts, expected value is true this time
-	endpointConfigOption, err = BuildConfigEndpointFromOptions(m1, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16)
+	endpointConfigOption, err = BuildConfigEndpointFromOptions(m1, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m15, m16)
 	if err != nil {
 		t.Fatalf("BuildConfigEndpointFromOptions returned unexpected error %s", err)
 	}
@@ -202,7 +199,7 @@ func TestIsEndpointConfigFullyOverridden(t *testing.T) {
 
 func TestCreateCustomEndpointConfigWithSomeDefaultFunctionsRemainingFunctions(t *testing.T) {
 	// do the same test with the other interfaces in reverse
-	endpointConfigOption, err := BuildConfigEndpointFromOptions(m8, m9, m10, m11, m12, m13, m14, m15, m16)
+	endpointConfigOption, err := BuildConfigEndpointFromOptions(m8, m9, m10, m11, m12, m13, m15, m16)
 	if err != nil {
 		t.Fatalf("BuildConfigEndpointFromOptions returned unexpected error %s", err)
 	}
@@ -224,12 +221,6 @@ func TestCreateCustomEndpointConfigWithSomeDefaultFunctionsRemainingFunctions(t 
 	if m != "" {
 		t.Fatalf("CryptoConfigPath did not return expected interface value. Expected: '%s', Received: %s", "", m)
 	}
-	e := endpointConfigOptionWithSomeDefaults.EventServiceType()
-
-	if e != fab.DeliverEventServiceType {
-		t.Fatalf("MSPID did not return expected interface value. Expected: %d, Received: %d", fab.DeliverEventServiceType, e)
-
-	}
 }
 
 type mockTimeoutConfig struct{}
@@ -246,20 +237,20 @@ func (m *mockrderersConfig) OrderersConfig() []fab.OrdererConfig {
 
 type mockOrdererConfig struct{}
 
-func (m *mockOrdererConfig) OrdererConfig(name string) (*fab.OrdererConfig, bool) {
-	return &fab.OrdererConfig{URL: "o.com", GRPCOptions: nil, TLSCACert: nil}, true
+func (m *mockOrdererConfig) OrdererConfig(name string) (*fab.OrdererConfig, bool, bool) {
+	return &fab.OrdererConfig{URL: "o.com", GRPCOptions: nil, TLSCACert: nil}, true, false
 }
 
 type mockPeersConfig struct{}
 
 func (m *mockPeersConfig) PeersConfig(org string) ([]fab.PeerConfig, bool) {
-	return []fab.PeerConfig{{URL: "peer.com", EventURL: "event.peer.com", GRPCOptions: nil, TLSCACert: nil}}, true
+	return []fab.PeerConfig{{URL: "peer.com", GRPCOptions: nil, TLSCACert: nil}}, true
 }
 
 type mockPeerConfig struct{}
 
 func (m *mockPeerConfig) PeerConfig(nameOrURL string) (*fab.PeerConfig, bool) {
-	return &fab.PeerConfig{URL: "p.com", EventURL: "event.p.com", GRPCOptions: nil, TLSCACert: nil}, true
+	return &fab.PeerConfig{URL: "p.com", GRPCOptions: nil, TLSCACert: nil}, true
 }
 
 type mockNetworkConfig struct{}
@@ -271,37 +262,31 @@ func (m *mockNetworkConfig) NetworkConfig() *fab.NetworkConfig {
 type mockNetworkPeers struct{}
 
 func (m *mockNetworkPeers) NetworkPeers() []fab.NetworkPeer {
-	return []fab.NetworkPeer{{PeerConfig: fab.PeerConfig{URL: "p.com", EventURL: "event.p.com", GRPCOptions: nil, TLSCACert: nil}, MSPID: ""}}
+	return []fab.NetworkPeer{{PeerConfig: fab.PeerConfig{URL: "p.com", GRPCOptions: nil, TLSCACert: nil}, MSPID: ""}}
 }
 
 type mockChannelConfig struct{}
 
-func (m *mockChannelConfig) ChannelConfig(name string) (*fab.ChannelEndpointConfig, bool) {
-	return &fab.ChannelEndpointConfig{}, true
+func (m *mockChannelConfig) ChannelConfig(name string) *fab.ChannelEndpointConfig {
+	return &fab.ChannelEndpointConfig{}
 }
 
 type mockChannelPeers struct{}
 
-func (m *mockChannelPeers) ChannelPeers(name string) ([]fab.ChannelPeer, bool) {
-	return []fab.ChannelPeer{{}}, true
+func (m *mockChannelPeers) ChannelPeers(name string) []fab.ChannelPeer {
+	return []fab.ChannelPeer{{}}
 }
 
 type mockChannelOrderers struct{}
 
-func (m *mockChannelOrderers) ChannelOrderers(name string) ([]fab.OrdererConfig, bool) {
-	return []fab.OrdererConfig{}, true
+func (m *mockChannelOrderers) ChannelOrderers(name string) []fab.OrdererConfig {
+	return []fab.OrdererConfig{}
 }
 
 type mockTLSCACertPool struct{}
 
-func (m *mockTLSCACertPool) TLSCACertPool() fab.CertPool {
+func (m *mockTLSCACertPool) TLSCACertPool() commtls.CertPool {
 	return nil
-}
-
-type mockEventServiceType struct{}
-
-func (m *mockEventServiceType) EventServiceType() fab.EventServiceType {
-	return fab.DeliverEventServiceType
 }
 
 type mockTLSClientCerts struct{}

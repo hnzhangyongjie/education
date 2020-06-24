@@ -7,11 +7,11 @@ package main
 import (
 	"os"
 	"fmt"
-	"github.com/kongyixueyuan.com/education/sdkInit"
-	"github.com/kongyixueyuan.com/education/service"
+	"github.com/renyinew/education/sdkInit"
+	"github.com/renyinew/education/service"
 	"encoding/json"
-	"github.com/kongyixueyuan.com/education/web/controller"
-	"github.com/kongyixueyuan.com/education/web"
+	"github.com/renyinew/education/web/controller"
+	"github.com/renyinew/education/web"
 )
 
 const (
@@ -25,7 +25,7 @@ func main() {
 	initInfo := &sdkInit.InitInfo{
 
 		ChannelID: "kevinkongyixueyuan",
-		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/kongyixueyuan.com/education/fixtures/artifacts/channel.tx",
+		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/renyinew/education/fixtures/artifacts/channel.tx",
 
 		OrgAdmin:"Admin",
 		OrgName:"Org1",
@@ -33,7 +33,7 @@ func main() {
 
 		ChaincodeID: EduCC,
 		ChaincodeGoPath: os.Getenv("GOPATH"),
-		ChaincodePath: "github.com/kongyixueyuan.com/education/chaincode/",
+		ChaincodePath: "github.com/renyinew/education/chaincode/",
 		UserName:"User1",
 	}
 

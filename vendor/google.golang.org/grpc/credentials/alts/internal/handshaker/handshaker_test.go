@@ -20,18 +20,26 @@ package handshaker
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 	core "google.golang.org/grpc/credentials/alts/internal"
 	altspb "google.golang.org/grpc/credentials/alts/internal/proto/grpc_gcp"
 	"google.golang.org/grpc/credentials/alts/internal/testutil"
+	"google.golang.org/grpc/internal/grpctest"
 )
 
+type s struct {
+	grpctest.Tester
+}
+
+func Test(t *testing.T) {
+	grpctest.RunSubTests(t, s{})
+}
+
 var (
-	testAppProtocols   = []string{"grpc"}
 	testRecordProtocol = rekeyRecordProtocolName
 	testKey            = []byte{
 		// 44 arbitrary bytes.
@@ -115,7 +123,7 @@ func (t *testRPCStream) CloseSend() error {
 
 var stat testutil.Stats
 
-func TestClientHandshake(t *testing.T) {
+func (s) TestClientHandshake(t *testing.T) {
 	for _, testCase := range []struct {
 		delay              time.Duration
 		numberOfHandshakes int
@@ -170,7 +178,7 @@ func TestClientHandshake(t *testing.T) {
 	}
 }
 
-func TestServerHandshake(t *testing.T) {
+func (s) TestServerHandshake(t *testing.T) {
 	for _, testCase := range []struct {
 		delay              time.Duration
 		numberOfHandshakes int
@@ -239,7 +247,7 @@ func (t *testUnresponsiveRPCStream) CloseSend() error {
 	return nil
 }
 
-func TestPeerNotResponding(t *testing.T) {
+func (s) TestPeerNotResponding(t *testing.T) {
 	stream := &testUnresponsiveRPCStream{}
 	chs := &altsHandshaker{
 		stream: stream,

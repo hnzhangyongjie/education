@@ -20,10 +20,20 @@ package binarylog
 
 import (
 	"testing"
+
+	"google.golang.org/grpc/internal/grpctest"
 )
 
+type s struct {
+	grpctest.Tester
+}
+
+func Test(t *testing.T) {
+	grpctest.RunSubTests(t, s{})
+}
+
 // Test that get method logger returns the one with the most exact match.
-func TestGetMethodLogger(t *testing.T) {
+func (s) TestGetMethodLogger(t *testing.T) {
 	testCases := []struct {
 		in       string
 		method   string
@@ -78,12 +88,12 @@ func TestGetMethodLogger(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		l := newLoggerFromConfigString(tc.in)
+		l := NewLoggerFromConfigString(tc.in)
 		if l == nil {
 			t.Errorf("in: %q, failed to create logger from config string", tc.in)
 			continue
 		}
-		ml := l.GetMethodLogger(tc.method)
+		ml := l.getMethodLogger(tc.method)
 		if ml == nil {
 			t.Errorf("in: %q, method logger is nil, want non-nil", tc.in)
 			continue
@@ -96,7 +106,7 @@ func TestGetMethodLogger(t *testing.T) {
 }
 
 // expect method logger to be nil
-func TestGetMethodLoggerOff(t *testing.T) {
+func (s) TestGetMethodLoggerOff(t *testing.T) {
 	testCases := []struct {
 		in     string
 		method string
@@ -134,12 +144,12 @@ func TestGetMethodLoggerOff(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		l := newLoggerFromConfigString(tc.in)
+		l := NewLoggerFromConfigString(tc.in)
 		if l == nil {
 			t.Errorf("in: %q, failed to create logger from config string", tc.in)
 			continue
 		}
-		ml := l.GetMethodLogger(tc.method)
+		ml := l.getMethodLogger(tc.method)
 		if ml != nil {
 			t.Errorf("in: %q, method logger is non-nil, want nil", tc.in)
 		}

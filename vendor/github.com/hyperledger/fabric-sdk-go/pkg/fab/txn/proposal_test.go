@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -23,12 +25,35 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/mocks"
 	mspmocks "github.com/hyperledger/fabric-sdk-go/pkg/msp/test/mockmsp"
-	pb "github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
 const (
 	testChannel = "testchannel"
 )
+
+func TestNewHeader(t *testing.T) {
+	user := mspmocks.NewMockSigningIdentity("test", "1234")
+	ctx := mocks.NewMockContext(user)
+
+	creator, err := ctx.Serialize()
+	require.NoError(t, err)
+
+	txh, err := NewHeader(ctx, testChannel)
+	require.NoError(t, err)
+	require.NotEmptyf(t, txh.nonce, "Expecting nonce")
+	require.Equal(t, creator, txh.creator)
+	require.NotEmpty(t, txh.id)
+
+	creator = []byte("someothercreator")
+	nonce := []byte("123456")
+
+	txh, err = NewHeader(ctx, testChannel, fab.WithCreator(creator), fab.WithNonce(nonce))
+	require.NoError(t, err)
+	require.Equal(t, nonce, txh.nonce)
+	require.Equal(t, creator, txh.creator)
+	require.NotEmpty(t, txh.id)
+}
 
 func TestNewTransactionProposal(t *testing.T) {
 	user := mspmocks.NewMockSigningIdentity("test", "1234")

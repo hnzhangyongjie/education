@@ -1,7 +1,21 @@
-ignored = ["github.com/kongyixueyuan.com/education/chaincode"]
+ignored = ["github.com/renyinew/education/chaincode"]
 
 [[constraint]]
-  # Release v1.0.0-alpha4
   name = "github.com/hyperledger/fabric-sdk-go"
-  revision = "a906355f73d060d7bf95874a9e90dc17589edbb3"
+  revision = "fdb95089dc146276bc6d1ed373ba10cbe64df5df"
 
+[[override]]
+  revision = "4e2dcbde500472449917533851bf4bae9bdff562"
+  name = "github.com/cloudflare/cfssl"
+
+[[override]]
+  name = "github.com/golang/protobuf"
+   revision = "6c66de79d66478d166c7ea05f5d2ccaf016fbd6b"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.30.0"
+
+[[constraint]]
+  name = "github.com/golang/mock"
+  version = "1.4.3"

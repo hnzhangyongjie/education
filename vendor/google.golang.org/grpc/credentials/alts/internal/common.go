@@ -16,15 +16,13 @@
  *
  */
 
-//go:generate ./regenerate.sh
-
 // Package internal contains common core functionality for ALTS.
 package internal
 
 import (
+	"context"
 	"net"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 )
 

@@ -16,8 +16,10 @@
 // of unary/streaming requests/responses.
 syntax = "proto3";
 
-import "messages.proto";
-import "control.proto";
+option go_package = "google.golang.org/grpc/benchmark/grpc_testing";
+
+import "benchmark/grpc_testing/messages.proto";
+import "benchmark/grpc_testing/control.proto";
 
 package grpc.testing;
 
@@ -29,6 +31,9 @@ service BenchmarkService {
   // One request followed by one response.
   // The server returns the client payload as-is.
   rpc StreamingCall(stream SimpleRequest) returns (stream SimpleResponse);
+  // Unconstrainted streaming.
+  // Both server and client keep sending & receiving simultaneously.
+  rpc UnconstrainedStreamingCall(stream SimpleRequest) returns (stream SimpleResponse);
 }
 
 service WorkerService {

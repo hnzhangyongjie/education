@@ -24,11 +24,6 @@ import (
 	core "google.golang.org/grpc/credentials/alts/internal"
 )
 
-// cryptoTestVector is struct for a rekey test vector
-type rekeyTestVector struct {
-	key, nonce, plaintext, ciphertext []byte
-}
-
 // getGCMCryptoPair outputs a client/server pair on aes128gcmRekey.
 func getRekeyCryptoPair(key []byte, counter []byte, t *testing.T) (ALTSRecordCrypto, ALTSRecordCrypto) {
 	client, err := NewAES128GCMRekey(core.ClientSide, key)
@@ -109,7 +104,7 @@ func testRekeyEncryptRoundtrip(client ALTSRecordCrypto, server ALTSRecordCrypto,
 }
 
 // Test encrypt and decrypt on roundtrip messages for aes128gcmRekey.
-func TestAES128GCMRekeyEncryptRoundtrip(t *testing.T) {
+func (s) TestAES128GCMRekeyEncryptRoundtrip(t *testing.T) {
 	// Test for aes128gcmRekey.
 	key := make([]byte, 44)
 	client, server := getRekeyCryptoPair(key, nil, t)

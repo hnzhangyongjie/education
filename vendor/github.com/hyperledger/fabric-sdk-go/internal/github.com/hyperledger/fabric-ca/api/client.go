@@ -11,7 +11,6 @@ Please review third_party pinning scripts and patches for more details.
 package api
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/cloudflare/cfssl/csr"
@@ -67,7 +66,7 @@ type EnrollmentRequest struct {
 	// Label is the label to use in HSM operations
 	Label string `json:"label,omitempty" help:"Label to use in HSM operations"`
 	// CSR is Certificate Signing Request info
-	CSR *CSRInfo `json:"csr,omitempty" help:"Certificate Signing Request info"`
+	CSR *CSRInfo `json:"csr,omitempty" skip:"true"` // Skipping this because we pull the CSR from the CSR flags
 	// The type of the enrollment request: x509 or idemix
 	// The default is a request for an X509 enrollment certificate
 	Type string `def:"x509" help:"The type of enrollment request: 'x509' or 'idemix'"`
@@ -131,43 +130,6 @@ type RevokedCert struct {
 	Serial string
 	// AKI of the revoked certificate
 	AKI string
-}
-
-// GetTCertBatchRequest is input provided to identity.GetTCertBatch
-type GetTCertBatchRequest struct {
-	// Number of TCerts in the batch.
-	Count int `json:"count"`
-	// The attribute names whose names and values are to be sealed in the issued TCerts.
-	AttrNames []string `json:"attr_names,omitempty"`
-	// EncryptAttrs denotes whether to encrypt attribute values or not.
-	// When set to true, each issued TCert in the batch will contain encrypted attribute values.
-	EncryptAttrs bool `json:"encrypt_attrs,omitempty"`
-	// Certificate Validity Period.  If specified, the value used
-	// is the minimum of this value and the configured validity period
-	// of the TCert manager.
-	ValidityPeriod time.Duration `json:"validity_period,omitempty"`
-	// The pre-key to be used for key derivation.
-	PreKey string `json:"prekey"`
-	// DisableKeyDerivation if true disables key derivation so that a TCert is not
-	// cryptographically related to an ECert.  This may be necessary when using an
-	// HSM which does not support the TCert's key derivation function.
-	DisableKeyDerivation bool `json:"disable_kdf,omitempty"`
-	// CAName is the name of the CA to connect to
-	CAName string `json:"caname,omitempty" skip:"true"`
-}
-
-// GetTCertBatchResponse is the return value of identity.GetTCertBatch
-type GetTCertBatchResponse struct {
-	ID     *big.Int  `json:"id"`
-	TS     time.Time `json:"ts"`
-	Key    []byte    `json:"key"`
-	TCerts []TCert   `json:"tcerts"`
-}
-
-// TCert encapsulates a signed transaction certificate and optionally a map of keys
-type TCert struct {
-	Cert []byte            `json:"cert"`
-	Keys map[string][]byte `json:"keys,omitempty"` //base64 encoded string as value
 }
 
 // GetCAInfoRequest is request to get generic CA information
@@ -317,7 +279,7 @@ type CSRInfo struct {
 	Names        []csr.Name       `json:"names,omitempty"`
 	Hosts        []string         `json:"hosts,omitempty"`
 	KeyRequest   *BasicKeyRequest `json:"key,omitempty"`
-	CA           *csr.CAConfig    `json:"ca,omitempty"`
+	CA           *csr.CAConfig    `json:"ca,omitempty" hide:"true"`
 	SerialNumber string           `json:"serial_number,omitempty"`
 }
 
@@ -350,8 +312,8 @@ type TimeRange struct {
 
 // BasicKeyRequest encapsulates size and algorithm for the key to be generated
 type BasicKeyRequest struct {
-	Algo string `json:"algo" yaml:"algo"`
-	Size int    `json:"size" yaml:"size"`
+	Algo string `json:"algo" yaml:"algo" help:"Specify key algorithm"`
+	Size int    `json:"size" yaml:"size" help:"Specify key size"`
 }
 
 // Attribute is a name and value pair

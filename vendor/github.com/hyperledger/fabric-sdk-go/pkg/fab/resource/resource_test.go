@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/errors/retry"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/errors/status"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
@@ -24,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/peer"
 	mspmocks "github.com/hyperledger/fabric-sdk-go/pkg/msp/test/mockmsp"
 	"github.com/hyperledger/fabric-sdk-go/test/metadata"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +33,7 @@ const testAddress = "127.0.0.1:0"
 func TestSignChannelConfig(t *testing.T) {
 	ctx := setupContext()
 
-	configTx, err := ioutil.ReadFile(path.Join("../../../", metadata.ChannelConfigPath, "mychannel.tx"))
+	configTx, err := ioutil.ReadFile(filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, "mychannel.tx"))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -52,7 +52,7 @@ func TestSignChannelConfig(t *testing.T) {
 func TestCreateChannel(t *testing.T) {
 	ctx := setupContext()
 
-	configTx, err := ioutil.ReadFile(path.Join("../../../", metadata.ChannelConfigPath, "mychannel.tx"))
+	configTx, err := ioutil.ReadFile(filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, "mychannel.tx"))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -233,8 +233,10 @@ func TestGenesisBlock(t *testing.T) {
 	ctx := setupContext()
 
 	orderer := mocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(mocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		mocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 	reqCtx, cancel := contextImpl.NewRequest(ctx, contextImpl.WithTimeout(10*time.Second))
 	defer cancel()
@@ -250,9 +252,13 @@ func TestGenesisBlockWithRetry(t *testing.T) {
 	ctx := setupContext()
 
 	orderer := mocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(status.New(status.OrdererServerStatus, int32(common.Status_SERVICE_UNAVAILABLE), "service unavailable", []interface{}{}))
-	orderer.EnqueueForSendDeliver(mocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		status.New(status.OrdererServerStatus, int32(common.Status_SERVICE_UNAVAILABLE), "service unavailable", []interface{}{}),
+	)
+	orderer.EnqueueForSendDeliver(
+		mocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 
 	reqCtx, cancel := contextImpl.NewRequest(ctx, contextImpl.WithTimeout(10*time.Second))

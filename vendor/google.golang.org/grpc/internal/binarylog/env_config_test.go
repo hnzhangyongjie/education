@@ -25,7 +25,7 @@ import (
 
 // This tests that when multiple configs are specified, all methods loggers will
 // be set correctly. Correctness of each logger is covered by other unit tests.
-func TestNewLoggerFromConfigString(t *testing.T) {
+func (s) TestNewLoggerFromConfigString(t *testing.T) {
 	const (
 		s1     = "s1"
 		m1     = "m1"
@@ -34,7 +34,7 @@ func TestNewLoggerFromConfigString(t *testing.T) {
 		fullM2 = s1 + "/" + m2
 	)
 	c := fmt.Sprintf("*{h:1;m:2},%s{h},%s{m},%s{h;m}", s1+"/*", fullM1, fullM2)
-	l := newLoggerFromConfigString(c)
+	l := NewLoggerFromConfigString(c).(*logger)
 
 	if l.all.hdr != 1 || l.all.msg != 2 {
 		t.Errorf("l.all = %#v, want headerLen: 1, messageLen: 2", l.all)
@@ -65,14 +65,14 @@ func TestNewLoggerFromConfigString(t *testing.T) {
 	}
 }
 
-func TestNewLoggerFromConfigStringInvalid(t *testing.T) {
+func (s) TestNewLoggerFromConfigStringInvalid(t *testing.T) {
 	testCases := []string{
 		"",
 		"*{}",
 		"s/m,*{}",
 		"s/m,s/m{a}",
 
-		// Duplciate rules.
+		// Duplicate rules.
 		"s/m,-s/m",
 		"-s/m,s/m",
 		"s/m,s/m",
@@ -83,14 +83,14 @@ func TestNewLoggerFromConfigStringInvalid(t *testing.T) {
 		"*,*{h:1;m:1}",
 	}
 	for _, tc := range testCases {
-		l := newLoggerFromConfigString(tc)
+		l := NewLoggerFromConfigString(tc)
 		if l != nil {
 			t.Errorf("With config %q, want logger %v, got %v", tc, nil, l)
 		}
 	}
 }
 
-func TestParseMethodConfigAndSuffix(t *testing.T) {
+func (s) TestParseMethodConfigAndSuffix(t *testing.T) {
 	testCases := []struct {
 		in, service, method, suffix string
 	}{
@@ -152,7 +152,7 @@ func TestParseMethodConfigAndSuffix(t *testing.T) {
 	}
 }
 
-func TestParseMethodConfigAndSuffixInvalid(t *testing.T) {
+func (s) TestParseMethodConfigAndSuffixInvalid(t *testing.T) {
 	testCases := []string{
 		"*/m",
 		"*/m{}",
@@ -165,7 +165,7 @@ func TestParseMethodConfigAndSuffixInvalid(t *testing.T) {
 	}
 }
 
-func TestParseHeaderMessageLengthConfig(t *testing.T) {
+func (s) TestParseHeaderMessageLengthConfig(t *testing.T) {
 	testCases := []struct {
 		in       string
 		hdr, msg uint64
@@ -222,7 +222,7 @@ func TestParseHeaderMessageLengthConfig(t *testing.T) {
 		}
 	}
 }
-func TestParseHeaderMessageLengthConfigInvalid(t *testing.T) {
+func (s) TestParseHeaderMessageLengthConfigInvalid(t *testing.T) {
 	testCases := []string{
 		"{}",
 		"{h;a}",
@@ -236,7 +236,7 @@ func TestParseHeaderMessageLengthConfigInvalid(t *testing.T) {
 	}
 }
 
-func TestFillMethodLoggerWithConfigStringBlacklist(t *testing.T) {
+func (s) TestFillMethodLoggerWithConfigStringBlacklist(t *testing.T) {
 	testCases := []string{
 		"p.s/m",
 		"service/method",
@@ -256,7 +256,7 @@ func TestFillMethodLoggerWithConfigStringBlacklist(t *testing.T) {
 	}
 }
 
-func TestFillMethodLoggerWithConfigStringGlobal(t *testing.T) {
+func (s) TestFillMethodLoggerWithConfigStringGlobal(t *testing.T) {
 	testCases := []struct {
 		in       string
 		hdr, msg uint64
@@ -320,7 +320,7 @@ func TestFillMethodLoggerWithConfigStringGlobal(t *testing.T) {
 	}
 }
 
-func TestFillMethodLoggerWithConfigStringPerService(t *testing.T) {
+func (s) TestFillMethodLoggerWithConfigStringPerService(t *testing.T) {
 	testCases := []struct {
 		in       string
 		hdr, msg uint64
@@ -386,7 +386,7 @@ func TestFillMethodLoggerWithConfigStringPerService(t *testing.T) {
 	}
 }
 
-func TestFillMethodLoggerWithConfigStringPerMethod(t *testing.T) {
+func (s) TestFillMethodLoggerWithConfigStringPerMethod(t *testing.T) {
 	testCases := []struct {
 		in       string
 		hdr, msg uint64
@@ -456,7 +456,7 @@ func TestFillMethodLoggerWithConfigStringPerMethod(t *testing.T) {
 	}
 }
 
-func TestFillMethodLoggerWithConfigStringInvalid(t *testing.T) {
+func (s) TestFillMethodLoggerWithConfigStringInvalid(t *testing.T) {
 	testCases := []string{
 		"",
 		"{}",

@@ -87,8 +87,8 @@
 在`GOPATH`的`src`文件夹中新建一个目录如下：
 
 ```shell
-$ mkdir -p $GOPATH/src/github.com/kongyixueyuan.com/education 
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ mkdir -p $GOPATH/src/github.com/renyinew/education 
+$ cd $GOPATH/src/github.com/renyinew/education
 ```
 
 使用 `git` 命令克隆 hf-fixtures 目录当前路径
@@ -323,7 +323,7 @@ $ vim docker-compose.yml
 为了检查网络是否正常工作，使用`docker-compose`同时启动或停止所有容器。 进入`fixtures`文件夹，运行：
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education/fixtures
+$ cd $GOPATH/src/github.com/renyinew/education/fixtures
 $ docker-compose up
 ```
 
@@ -348,7 +348,7 @@ $ docker-compose up
 最后在终端2中执行如下命令关闭网络：
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education/fixtures
+$ cd $GOPATH/src/github.com/renyinew/education/fixtures
 $ docker-compose down
 ```
 
@@ -371,7 +371,7 @@ $ docker-compose down
 进入项目的根目录中创建一个 `config.yaml` 文件并编辑
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ vim config.yaml
 ```
 
@@ -438,7 +438,7 @@ client:
 
   # Root of the MSP directories with keys and certs.
   cryptoconfig:
-    path: ${GOPATH}/src/github.com/kongyixueyuan.com/education/fixtures/crypto-config
+    path: ${GOPATH}/src/github.com/renyinew/education/fixtures/crypto-config
 
   # Some SDKs support pluggable KV stores, the properties under "credentialStore"
   # are implementation specific
@@ -630,7 +630,7 @@ orderers:
 
     tlsCACerts:
       # Certificate location absolute path
-      path: ${GOPATH}/src/github.com/kongyixueyuan.com/education/fixtures/crypto-config/ordererOrganizations/kevin.kongyixueyuan.com/tlsca/tlsca.kevin.kongyixueyuan.com-cert.pem
+      path: ${GOPATH}/src/github.com/renyinew/education/fixtures/crypto-config/ordererOrganizations/kevin.kongyixueyuan.com/tlsca/tlsca.kevin.kongyixueyuan.com-cert.pem
 
 #
 # List of peers to send various requests to, including endorsement, query
@@ -657,7 +657,7 @@ peers:
 
     tlsCACerts:
       # Certificate location absolute path
-      path: ${GOPATH}/src/github.com/kongyixueyuan.com/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/tlsca/tlsca.org1.kevin.kongyixueyuan.com-cert.pem
+      path: ${GOPATH}/src/github.com/renyinew/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/tlsca/tlsca.org1.kevin.kongyixueyuan.com-cert.pem
 
   peer1.org1.kevin.kongyixueyuan.com:
     # this URL is used to send endorsement and query requests
@@ -679,7 +679,7 @@ peers:
 
     tlsCACerts:
       # Certificate location absolute path
-      path: ${GOPATH}/src/github.com/kongyixueyuan.com/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/tlsca/tlsca.org1.kevin.kongyixueyuan.com-cert.pem
+      path: ${GOPATH}/src/github.com/renyinew/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/tlsca/tlsca.org1.kevin.kongyixueyuan.com-cert.pem
 
 #
 # Fabric-CA is a special kind of Certificate Authority provided by Hyperledger Fabric which allows
@@ -691,7 +691,7 @@ certificateAuthorities:
     url: http://localhost:7054
     tlsCACerts:
       # Certificate location absolute path
-      path: ${GOPATH}/src/github.com/kongyixueyuan.com/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/ca/ca.org1.kevin.kongyixueyuan.com-cert.pem
+      path: ${GOPATH}/src/github.com/renyinew/education/fixtures/crypto-config/peerOrganizations/org1.kevin.kongyixueyuan.com/ca/ca.org1.kevin.kongyixueyuan.com-cert.pem
 
     # Fabric-CA supports dynamic user enrollment via REST APIs. A "root" user, a.k.a registrar, is
     # needed to enroll and invoke new users.
@@ -1154,7 +1154,7 @@ func (t *EducationChaincode) delEdu(stub shim.ChaincodeStubInterface, args []str
 在 `sdkInit` 目录下新创建一个名为 `start.go` 的go文件利用 vim 编辑器进行编辑：
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ vim sdkInit/start.go 
 ```
 
@@ -1247,7 +1247,7 @@ func CreateChannel(sdk *fabsdk.FabricSDK, info *InitInfo) error {
 为了确保客户端能够初始化所有组件，将在启动网络的情况下进行简单的测试。 为了做到这一点，我们需要编写 Go 代码，在项目根目录下新创建一个 `main.go` 的主文件并编辑内容
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ vim main.go
 ```
 
@@ -1262,7 +1262,7 @@ package main
 import (
 	"os"
 	"fmt"
-	"github.com/kongyixueyuan.com/education/sdkInit"
+	"github.com/renyinew/education/sdkInit"
 )
 
 const (
@@ -1276,7 +1276,7 @@ func main() {
 	initInfo := &sdkInit.InitInfo{
 
 		ChannelID: "kevinkongyixueyuan",
-		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/kongyixueyuan.com/education/fixtures/artifacts/channel.tx",
+		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/renyinew/education/fixtures/artifacts/channel.tx",
 
 		OrgAdmin:"Admin",
 		OrgName:"Org1",
@@ -1340,7 +1340,7 @@ $ vim Gopkg.toml
 ```
 
 ```toml
-ignored = ["github.com/kongyixueyuan.com/education/chaincode"]
+ignored = ["github.com/renyinew/education/chaincode"]
 
 [[constraint]]
   # Release v1.0.0-alpha4
@@ -1391,7 +1391,7 @@ Fabric SDK生成一些文件，如证书，二进制文件和临时文件。 关
 - 关闭你的网络： 
 
   ```shell
-  $ cd $GOPATH/src/github.com/kongyixueyuan.com/education/fixtures 
+  $ cd $GOPATH/src/github.com/renyinew/education/fixtures 
   $ docker-compose down
   ```
 
@@ -1426,7 +1426,7 @@ $ make --version
 然后使用以下内容在项目的根目录下创建一个名为`Makefile`的文件并进行编辑：
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ vim Makefile
 ```
 
@@ -1576,7 +1576,7 @@ package main
 import (
 	"os"
 	"fmt"
-	"github.com/kongyixueyuan.com/education/sdkInit"
+	"github.com/renyinew/education/sdkInit"
 )
 
 const (
@@ -1590,7 +1590,7 @@ func main() {
 	initInfo := &sdkInit.InitInfo{
 
 		ChannelID: "kevinkongyixueyuan",
-		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/kongyixueyuan.com/education/fixtures/artifacts/channel.tx",
+		ChannelConfig: os.Getenv("GOPATH") + "/src/github.com/renyinew/education/fixtures/artifacts/channel.tx",
 
 		OrgAdmin:"Admin",
 		OrgName:"Org1",
@@ -1598,7 +1598,7 @@ func main() {
 
 		ChaincodeID: SimpleCC,
 		ChaincodeGoPath: os.Getenv("GOPATH"),
-		ChaincodePath: "github.com/kongyixueyuan.com/education/chaincode/",
+		ChaincodePath: "github.com/renyinew/education/chaincode/",
 		UserName:"User1",
 	}
 
@@ -1649,7 +1649,7 @@ $ make
 在项目根目录下创建一个 `service` 目录作为业务层，在业务层中，我们使用 `Fabric-SDK-Go` 提供的接口对象调用相应的 API 以实现对链码的访问，最终实现对分类账本中的状态进行操作。 
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ mkdir service
 ```
 
@@ -1800,7 +1800,7 @@ package main
 
 import (
 	[......]
-	"github.com/kongyixueyuan.com/education/service"
+	"github.com/renyinew/education/service"
 )
 
 [......]
@@ -2214,7 +2214,7 @@ $ make
 在项目根目录下新创建一个名为 `web`  的目录，用来存放Web应用层的所有内容
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ mkdir -p web/controller
 ```
 
@@ -2235,7 +2235,7 @@ $ vim web/controller/userInfo.go
 
 package controller
 
-import "github.com/kongyixueyuan.com/education/service"
+import "github.com/renyinew/education/service"
 
 type Application struct {
 	Setup *service.ServiceSetup
@@ -2343,7 +2343,7 @@ package controller
 import (
 	"net/http"
 	"encoding/json"
-	"github.com/kongyixueyuan.com/education/service"
+	"github.com/renyinew/education/service"
 	"fmt"
 )
 
@@ -2623,7 +2623,7 @@ package web
 import (
 	"net/http"
 	"fmt"
-	"github.com/kongyixueyuan.com/education/web/controller"
+	"github.com/renyinew/education/web/controller"
 )
 
 
@@ -2674,7 +2674,7 @@ func WebStart(app controller.Application)  {
 在项目的web目录下新创建一个名为 `static`  的目录，用来存放Web应用视图层的所有静态内容
 
 ```shell
-$ cd $GOPATH/src/github.com/kongyixueyuan.com/education
+$ cd $GOPATH/src/github.com/renyinew/education
 $ mkdir web/static
 ```
 
@@ -2936,8 +2936,8 @@ $ vim main.go
 ```go
 import(
 	[......]
-	"github.com/kongyixueyuan.com/education/web/controller"
-	"github.com/kongyixueyuan.com/education/web"
+	"github.com/renyinew/education/web/controller"
+	"github.com/renyinew/education/web"
 )
 
 func main(){}

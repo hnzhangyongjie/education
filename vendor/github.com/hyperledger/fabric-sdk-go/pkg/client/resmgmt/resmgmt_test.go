@@ -7,16 +7,29 @@ SPDX-License-Identifier: Apache-2.0
 package resmgmt
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/orderer"
+
+	"github.com/hyperledger/fabric-sdk-go/pkg/util/test"
+
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/errors/retry"
+	"github.com/hyperledger/fabric-sdk-go/test/metadata"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/errors/status"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
@@ -32,19 +45,20 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/resource"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk/provider/fabpvdr"
 	mspmocks "github.com/hyperledger/fabric-sdk-go/pkg/msp/test/mockmsp"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric-sdk-go/third_party/github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	channelConfig = "../../../test/fixtures/fabric/v1.0/channel/mychannel.tx"
-	networkCfg    = "../../../test/fixtures/config/config_test.yaml"
-	configPath    = "../../core/config/testdata/config_test.yaml"
-	testAddress   = "127.0.0.1:0"
+	channelConfigTxFile      = "mychannel.tx"
+	networkCfg               = "config_test.yaml"
+	networkCfgWithoutOrderer = "config_test_without_orderer.yaml"
+	testAddress              = "127.0.0.1:0"
 )
+
+func getConfigPath() string {
+	return filepath.Join(metadata.GetProjectPath(), "pkg", "core", "config", "testdata")
+}
 
 func withLocalContextProvider(provider context.LocalProvider) ClientOption {
 	return func(rmc *Client) error {
@@ -63,8 +77,10 @@ func TestJoinChannelFail(t *testing.T) {
 
 	// Create mock orderer with simple mock block
 	orderer := fcmocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(fcmocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		fcmocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 
 	setupCustomOrderer(ctx, orderer)
@@ -99,8 +115,10 @@ func TestJoinChannelSuccess(t *testing.T) {
 
 	// Create mock orderer with simple mock block
 	orderer := fcmocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(fcmocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		fcmocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 
 	setupCustomOrderer(ctx, orderer)
@@ -135,8 +153,10 @@ func TestJoinChannelWithFilter(t *testing.T) {
 
 	// Create mock orderer with simple mock block
 	orderer := fcmocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(fcmocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		fcmocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 	setupCustomOrderer(ctx, orderer)
 
@@ -224,8 +244,10 @@ func TestJoinChannelWithOptsRequiredParameters(t *testing.T) {
 
 	// Create mock orderer with simple mock block
 	orderer := fcmocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(fcmocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		fcmocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 	setupCustomOrderer(ctx, orderer)
 
@@ -262,8 +284,10 @@ func TestJoinChannelWithOptsRequiredParameters(t *testing.T) {
 
 	//Some cleanup before further test
 	orderer = fcmocks.NewMockOrderer("", nil)
-	orderer.EnqueueForSendDeliver(fcmocks.NewSimpleMockBlock())
-	orderer.EnqueueForSendDeliver(common.Status_SUCCESS)
+	orderer.EnqueueForSendDeliver(
+		fcmocks.NewSimpleMockBlock(),
+		common.Status_SUCCESS,
+	)
 	orderer.CloseQueue()
 
 	ctx = setupTestContext("test", "Org1MSP")
@@ -297,6 +321,7 @@ func TestJoinChannelDiscoveryError(t *testing.T) {
 func TestOrdererConfigFail(t *testing.T) {
 
 	ctx := setupTestContext("test", "Org1MSP")
+	configPath := filepath.Join(getConfigPath(), networkCfg)
 
 	backend, err := configImpl.FromFile(configPath)()
 	assert.Nil(t, err)
@@ -318,6 +343,7 @@ func TestOrdererConfigFail(t *testing.T) {
 func TestJoinChannelNoOrdererConfig(t *testing.T) {
 
 	ctx := setupTestContext("test", "Org1MSP")
+	configPath := filepath.Join(getConfigPath(), networkCfg)
 
 	// No channel orderer, no global orderer
 	backend, err := configImpl.FromFile(configPath)()
@@ -336,7 +362,7 @@ func TestJoinChannelNoOrdererConfig(t *testing.T) {
 
 	err = rc.JoinChannel("mychannel", WithTargets(peer1))
 	assert.NotNil(t, err, "Should have failed to join channel since no orderer has been configured")
-	assert.Contains(t, err.Error(), "orderer not found: orderers lookup failed")
+	assert.Contains(t, err.Error(), "orderer not found: no orderers found")
 
 	// Misconfigured channel orderer
 	configBackend = getInvalidChannelOrdererBackend(backend...)
@@ -392,7 +418,7 @@ func TestIsChaincodeInstalled(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !installed {
-		t.Fatalf("CC should have been installed: %s", req)
+		t.Fatalf("CC should have been installed: %+v", req)
 	}
 
 	// Chaincode not found request
@@ -404,7 +430,7 @@ func TestIsChaincodeInstalled(t *testing.T) {
 		t.Fatal(err)
 	}
 	if installed {
-		t.Fatalf("CC should NOT have been installed: %s", req)
+		t.Fatalf("CC should NOT have been installed: %+v", req)
 	}
 
 	// Test error retrieving installed cc info (peer is nil)
@@ -450,6 +476,24 @@ func TestQueryInstantiatedChaincodes(t *testing.T) {
 	_, err = rc.QueryInstantiatedChaincodes("mychannel", WithTargets(peer))
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestQueryCollectionsConfig(t *testing.T) {
+	rc := setupDefaultResMgmtClient(t)
+
+	_, err := rc.QueryCollectionsConfig("mychannel", "mychaincode")
+	if err == nil {
+		t.Fatal("QueryInstalledChaincodes: peer cannot be nil")
+	}
+
+	peer := &fcmocks.MockPeer{MockName: "Peer1", MockURL: "http://peer1.com", MockRoles: []string{}, MockCert: nil, MockMSP: "Org1MSP", Status: http.StatusOK}
+	coll, err := rc.QueryCollectionsConfig("mychannel", "mychaincode", WithTargets(peer))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(coll.Config) != 0 {
+		t.Fatalf("There is no collection configuration on peer")
 	}
 }
 
@@ -902,6 +946,7 @@ func TestUpgradeCCWithOpts(t *testing.T) {
 func TestCCProposal(t *testing.T) {
 
 	ctx := setupTestContext("Admin", "Org1MSP")
+	configPath := filepath.Join(getConfigPath(), networkCfg)
 
 	// Setup resource management client
 	configBackend, err := configImpl.FromFile(configPath)()
@@ -1001,7 +1046,9 @@ func setupCustomOrderer(ctx *fcmocks.MockContext, mockOrderer fab.Orderer) *fcmo
 }
 
 func getNetworkConfig(t *testing.T) fab.EndpointConfig {
-	configBackend, err := configImpl.FromFile(networkCfg)()
+	configPath := filepath.Join(metadata.GetProjectPath(), metadata.SDKConfigPath, networkCfg)
+
+	configBackend, err := configImpl.FromFile(configPath)()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1014,6 +1061,55 @@ func getNetworkConfig(t *testing.T) fab.EndpointConfig {
 	return config
 }
 
+func getNetworkConfigWithoutOrderer(t *testing.T) fab.EndpointConfig {
+	configPath := filepath.Join(metadata.GetProjectPath(), metadata.SDKConfigPath, networkCfgWithoutOrderer)
+
+	configBackend, err := configImpl.FromFile(configPath)()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := fabImpl.ConfigFromBackend(configBackend...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return config
+}
+
+func TestCalculateConfigUpdate(t *testing.T) {
+
+	// Get the original configuration
+	originalConfiglBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "config.block"))
+	assert.Nil(t, err, "opening config.block file failed")
+	originalConfigBlock := &common.Block{}
+	assert.Nil(t, proto.Unmarshal(originalConfiglBlockBytes, originalConfigBlock), "unmarshalling originalConfigBlock failed")
+	originalConfig, err := resource.ExtractConfigFromBlock(originalConfigBlock)
+	assert.Nil(t, err, "extractConfigFromBlock failed")
+
+	// Prepare new configuration
+	modifiedConfigBytes, err := proto.Marshal(originalConfig)
+	assert.Nil(t, err, "error marshalling originalConfig")
+	modifiedConfig := &common.Config{}
+	assert.Nil(t, proto.Unmarshal(modifiedConfigBytes, modifiedConfig), "unmarshalling modifiedConfig failed")
+	newMaxMessageCount, err := test.ModifyMaxMessageCount(modifiedConfig)
+	assert.Nil(t, err, "error modifying config")
+	assert.Nil(t, test.VerifyMaxMessageCount(modifiedConfig, newMaxMessageCount), "error verifying modified config")
+
+	channelID := "mychannel"
+
+	configUpdate, err := CalculateConfigUpdate(channelID, originalConfig, modifiedConfig)
+	assert.NoError(t, err, "calculating config update failed")
+	assert.NotNil(t, configUpdate, "calculated config update is nil")
+	assert.Equal(t, channelID, configUpdate.ChannelId, "channel ID mismatch")
+
+	updatedBatchSizeBytes := configUpdate.WriteSet.Groups["Orderer"].Values["BatchSize"].Value
+	batchSize := &orderer.BatchSize{}
+	assert.Nil(t, proto.Unmarshal(updatedBatchSizeBytes, batchSize), "unmarshalling BatchSize failed")
+	assert.Equal(t, newMaxMessageCount, batchSize.MaxMessageCount, "MaxMessageCount mismatch")
+
+}
+
 func TestSaveChannelSuccess(t *testing.T) {
 
 	mb := fcmocks.MockBroadcastServer{}
@@ -1021,6 +1117,7 @@ func TestSaveChannelSuccess(t *testing.T) {
 	defer mb.Stop()
 
 	ctx := setupTestContext("test", "Org1MSP")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
 
 	mockConfig := &fcmocks.MockConfig{}
 	grpcOpts := make(map[string]interface{})
@@ -1040,7 +1137,7 @@ func TestSaveChannelSuccess(t *testing.T) {
 	assert.NotNil(t, err, "Should have failed for empty channel request")
 	assert.Contains(t, err.Error(), "must provide channel ID and channel config")
 
-	r, err := os.Open(channelConfig)
+	r, err := os.Open(channelConfigTxPath)
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r.Close()
 
@@ -1055,7 +1152,7 @@ func TestSaveChannelSuccess(t *testing.T) {
 	assert.Contains(t, err.Error(), "must provide channel ID and channel config")
 
 	// Test extract configuration error
-	r1, err := os.Open("./testdata/extractcherr.tx")
+	r1, err := os.Open(filepath.Join("testdata", "extractcherr.tx"))
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r1.Close()
 
@@ -1064,7 +1161,7 @@ func TestSaveChannelSuccess(t *testing.T) {
 	assert.Contains(t, err.Error(), "unmarshal config envelope failed")
 
 	// Test sign channel error
-	r2, err := os.Open("./testdata/signcherr.tx")
+	r2, err := os.Open(filepath.Join("testdata", "signcherr.tx"))
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r2.Close()
 
@@ -1074,7 +1171,7 @@ func TestSaveChannelSuccess(t *testing.T) {
 	assert.Contains(t, err.Error(), "unmarshal config envelope failed")
 
 	// Test sign channel error
-	r3, err := os.Open("./testdata/non-existent.tx")
+	r3, err := os.Open(filepath.Join("testdata", "non-existent.tx"))
 	assert.NotNil(t, err, "opening channel config should have file failed")
 	defer r3.Close()
 
@@ -1082,13 +1179,13 @@ func TestSaveChannelSuccess(t *testing.T) {
 	assert.NotNil(t, err, "Should have failed to sign configuration")
 	assert.Contains(t, err.Error(), "reading channel config file failed")
 
-	// Test valid Save Channel request (success)
+	// Test valid Save Channel request using config tx (success)
 	resp, err := cc.SaveChannel(SaveChannelRequest{ChannelID: "mychannel", ChannelConfig: r}, WithOrdererEndpoint("example.com"))
 	assert.Nil(t, err, "error should be nil")
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
 
-	// Test valid Save Channel request (success / filename)
-	resp, err = cc.SaveChannel(SaveChannelRequest{ChannelID: "mychannel", ChannelConfigPath: channelConfig}, WithOrdererEndpoint("example.com"))
+	// Test valid Save Channel request using channel config tx from file (success)
+	resp, err = cc.SaveChannel(SaveChannelRequest{ChannelID: "mychannel", ChannelConfigPath: channelConfigTxPath}, WithOrdererEndpoint("example.com"))
 	assert.Nil(t, err, "error should be nil")
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
 }
@@ -1096,11 +1193,9 @@ func TestSaveChannelSuccess(t *testing.T) {
 func TestSaveChannelFailure(t *testing.T) {
 
 	// Set up context with error in create channel
-	user := mspmocks.NewMockSigningIdentity("test", "test")
-	errCtx := fcmocks.NewMockContext(user)
-	network := getNetworkConfig(t)
-	errCtx.SetEndpointConfig(network)
+	network := getNetworkConfigWithoutOrderer(t)
 	fabCtx := setupTestContext("user", "Org1Msp1")
+	fabCtx.SetEndpointConfig(network)
 
 	cc, err := New(createClientContext(fabCtx))
 	if err != nil {
@@ -1108,8 +1203,9 @@ func TestSaveChannelFailure(t *testing.T) {
 	}
 
 	// Test create channel failure
-	r, err := os.Open(channelConfig)
-	assert.Nil(t, err, "opening channel config file failed")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	r, err := os.Open(channelConfigTxPath)
+	assert.Nil(t, err, "opening channel config tx file failed")
 	defer r.Close()
 
 	_, err = cc.SaveChannel(SaveChannelRequest{ChannelID: "Invalid", ChannelConfig: r})
@@ -1124,6 +1220,7 @@ func TestSaveChannelWithOpts(t *testing.T) {
 	defer mb.Stop()
 
 	ctx := setupTestContext("test", "Org1MSP")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
 
 	mockConfig := &fcmocks.MockConfig{}
 	grpcOpts := make(map[string]interface{})
@@ -1140,8 +1237,8 @@ func TestSaveChannelWithOpts(t *testing.T) {
 	cc := setupResMgmtClient(t, ctx)
 
 	// Valid request (same for all options)
-	r1, err := os.Open(channelConfig)
-	assert.Nil(t, err, "opening channel config file failed")
+	r1, err := os.Open(channelConfigTxPath)
+	assert.Nil(t, err, "opening channel config tx file failed")
 	defer r1.Close()
 
 	req := SaveChannelRequest{ChannelID: "mychannel", ChannelConfig: r1}
@@ -1153,7 +1250,7 @@ func TestSaveChannelWithOpts(t *testing.T) {
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
 
 	// Test valid orderer ID
-	r2, err := os.Open(channelConfig)
+	r2, err := os.Open(channelConfigTxPath)
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r2.Close()
 
@@ -1165,7 +1262,7 @@ func TestSaveChannelWithOpts(t *testing.T) {
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
 
 	// Test invalid orderer ID
-	r3, err := os.Open(channelConfig)
+	r3, err := os.Open(channelConfigTxPath)
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r3.Close()
 
@@ -1180,6 +1277,271 @@ func TestSaveChannelWithOpts(t *testing.T) {
 	_, err = cc.SaveChannel(req, opts)
 	assert.NotNil(t, err, "Should have failed for invalid orderer ID")
 	assert.Contains(t, err.Error(), "failed to read opts in resmgmt: orderer not found for url")
+}
+
+func TestSaveChannelWithSignatureOpt(t *testing.T) {
+	mb := fcmocks.MockBroadcastServer{}
+	addr := mb.Start("127.0.0.1:0")
+	defer mb.Stop()
+
+	ctx := setupTestContext("test", "Org1MSP")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	configReader, err := getReaderFromPath(channelConfigTxPath)
+	assert.NoError(t, err, "Failed to create reader for the config %s", channelConfigTxPath)
+
+	mockConfig := &fcmocks.MockConfig{}
+	grpcOpts := make(map[string]interface{})
+	grpcOpts["allow-insecure"] = true
+
+	oConfig := &fab.OrdererConfig{
+		URL:         addr,
+		GRPCOptions: grpcOpts,
+	}
+	mockConfig.SetCustomOrdererCfg(oConfig)
+	mockConfig.SetCustomRandomOrdererCfg(oConfig)
+	ctx.SetEndpointConfig(mockConfig)
+
+	cc := setupResMgmtClient(t, ctx)
+
+	// fetch config reader for request
+	r1, err := os.Open(channelConfigTxPath)
+	assert.Nil(t, err, "opening channel config file failed")
+	defer r1.Close()
+
+	req := SaveChannelRequest{ChannelID: "mychannel", ChannelConfig: r1}
+
+	// get a valid signature for user "test" and mspID "Org1MSP"
+	signature, err := cc.CreateConfigSignatureFromReader(ctx.SigningIdentity, configReader)
+	assert.NoError(t, err, "Failed to get channel config signature")
+
+	opts := WithConfigSignatures(signature)
+	_, err = cc.SaveChannel(req, opts)
+	assert.NoError(t, err, "Save channel failed")
+
+	// test with multiple users from different orgs
+	user1Msp1 := mspmocks.NewMockSigningIdentity("user1", "Org1MSP")
+	user2Msp1 := mspmocks.NewMockSigningIdentity("user2", "Org1MSP")
+	user1Msp2 := mspmocks.NewMockSigningIdentity("user1", "Org2MSP")
+	user2Msp2 := mspmocks.NewMockSigningIdentity("user2", "Org2MSP")
+	signature, err = cc.CreateConfigSignatureFromReader(user1Msp1, configReader)
+	assert.NoError(t, err, "Failed to get channel config signature")
+	signatures := []*common.ConfigSignature{signature}
+	signature, err = cc.CreateConfigSignatureFromReader(user2Msp1, configReader)
+	assert.NoError(t, err, "Failed to get channel config signature")
+	signatures = append(signatures, signature)
+	signature, err = cc.CreateConfigSignatureFromReader(user1Msp2, configReader)
+	assert.NoError(t, err, "Failed to get channel config signature")
+	signatures = append(signatures, signature)
+	signature, err = cc.CreateConfigSignatureFromReader(user2Msp2, configReader)
+	assert.NoError(t, err, "Failed to get channel config signature")
+	signatures = append(signatures, signature)
+
+	// get a new reader for the new request
+	r2, err := os.Open(channelConfigTxPath)
+	assert.Nil(t, err, "opening channel config file failed")
+	defer r2.Close()
+
+	req = SaveChannelRequest{ChannelID: "mychannel", ChannelConfig: r2}
+
+	opts = WithConfigSignatures(signatures...)
+	_, err = cc.SaveChannel(req, opts)
+	assert.NoError(t, err, "Save channel failed")
+}
+
+func TestSaveChannelWithSignatureOptFromSeparateClients(t *testing.T) {
+	mb := fcmocks.MockBroadcastServer{}
+	addr := mb.Start("127.0.0.1:0")
+	defer mb.Stop()
+
+	ctx := setupTestContext("test", "Org1MSP")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+
+	mockConfig := &fcmocks.MockConfig{}
+	grpcOpts := make(map[string]interface{})
+	grpcOpts["allow-insecure"] = true
+
+	oConfig := &fab.OrdererConfig{
+		URL:         addr,
+		GRPCOptions: grpcOpts,
+	}
+	mockConfig.SetCustomOrdererCfg(oConfig)
+	mockConfig.SetCustomRandomOrdererCfg(oConfig)
+	ctx.SetEndpointConfig(mockConfig)
+
+	cc := setupResMgmtClient(t, ctx)
+	mockConfig = &fcmocks.MockConfig{}
+	oConfig = &fab.OrdererConfig{
+		URL:         addr,
+		GRPCOptions: grpcOpts,
+	}
+	mockConfig.SetCustomOrdererCfg(oConfig)
+	mockConfig.SetCustomRandomOrdererCfg(oConfig)
+	ctx2 := setupTestContext("test", "Org2MSP")
+	ctx2.SetEndpointConfig(mockConfig)
+	cc2 := setupResMgmtClient(t, ctx2)
+	//create a temp Dir
+	dirName, err := ioutil.TempDir("", "ConfigSignature")
+	assert.NoError(t, err, "creating temp dir failed")
+
+	// create and export signatures for all users of mspID "Org1MSP"
+	createOrgIDsAndExportSignatures(t, ctx, cc, "Org1MSP", dirName)
+
+	// now create signatures for "Org2Msp" and do the same (using cc2 and ctx2 this time)
+	createOrgIDsAndExportSignatures(t, ctx2, cc2, "Org2MSP", dirName)
+
+	// now that signatures are created and exported (ie: simulate sending over the wire), call SaveChannel WithConfigSignature Option
+	opts, _ := importSignatures(t, dirName, "Org1MSP")
+
+	tempOpts, _ := importSignatures(t, dirName, "Org2MSP")
+	opts = append(opts, tempOpts...)
+
+	defer os.Remove(dirName)
+
+	r, err := os.Open(channelConfigTxPath)
+	assert.NoError(t, err, "opening channel config file failed")
+	defer r.Close()
+
+	req := SaveChannelRequest{ChannelID: "mychannel", ChannelConfig: r}
+	// let's create a third client and call SaveChannel
+	ctx3 := setupTestContext("admin", "Org1MSP")
+	mockConfig = &fcmocks.MockConfig{}
+	ctx3.SetEndpointConfig(mockConfig)
+
+	cc3 := setupResMgmtClient(t, ctx3)
+	_, err = cc3.SaveChannel(req, opts...)
+	assert.NoError(t, err, "Save channel failed")
+}
+
+func importSignatures(t *testing.T, dir, org string) ([]RequestOption, []*os.File) {
+	fn := fmt.Sprintf("signature1_%s.txt", org)
+	opts := []RequestOption{}
+	files := []*os.File{}
+	opt, file := importSignature(t, dir, fn)
+	opts = append(opts, opt)
+	files = append(files, file)
+
+	fn = fmt.Sprintf("signature2_%s.txt", org)
+	opt, file = importSignature(t, dir, fn)
+	opts = append(opts, opt)
+	files = append(files, file)
+
+	fn = fmt.Sprintf("signature3_%s.txt", org)
+	opt, file = importSignature(t, dir, fn)
+	opts = append(opts, opt)
+	files = append(files, file)
+
+	return opts, files
+}
+
+func importSignature(t *testing.T, dir, prefix string) (RequestOption, *os.File) {
+	file, err := ioutil.TempFile(dir, prefix)
+	assert.NoError(t, err, "opening signature file '%s' failed", file.Name())
+	defer func() {
+		if err != nil { // close file if error found
+			file.Close()
+		}
+	}()
+
+	sigReader := bufio.NewReader(file)
+	opt := withConfigSignature(sigReader)
+	return opt, file
+}
+
+func getReaderFromPath(path string) (io.Reader, error) {
+	r, err := os.Open(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening file failed")
+	}
+
+	defer r.Close()
+
+	b, err := ioutil.ReadAll(r)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return bytes.NewReader(b), nil
+}
+
+func createOrgIDsAndExportSignatures(t *testing.T, fabCtx *fcmocks.MockContext, cc *Client, org, dir string) {
+	user1Msp1 := mspmocks.NewMockSigningIdentity("user1", org)
+	user2Msp1 := mspmocks.NewMockSigningIdentity("user2", org)
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+
+	configReader, err := getReaderFromPath(channelConfigTxPath)
+	assert.NoError(t, err, "Failed to create reader for the config %s", channelConfigTxPath)
+
+	sig, err := cc.CreateConfigSignatureFromReader(fabCtx.SigningIdentity, configReader)
+	assert.NoError(t, err, "Failed to create config signature for default user of %s", org)
+	exportCfgSignature(t, sig, dir, fmt.Sprintf("signature1_%s", org))
+	sig, err = cc.CreateConfigSignatureFromReader(user1Msp1, configReader)
+	assert.NoError(t, err, "Failed to create config signature for user1 of %s", org)
+	exportCfgSignature(t, sig, dir, fmt.Sprintf("signature2_%s", org))
+	sig, err = cc.CreateConfigSignatureFromReader(user2Msp1, configReader)
+	assert.NoError(t, err, "Failed to create config signature for user2 of %s", org)
+	exportCfgSignature(t, sig, dir, fmt.Sprintf("signature3_%s", org))
+}
+
+func exportCfgSignature(t *testing.T, signature *common.ConfigSignature, dir, signName string) {
+	sBytes, err := MarshalConfigSignature(signature)
+	assert.NoError(t, err, "failed to create channel config signatures as []byte")
+	assert.NotEmpty(t, sBytes, "channel config signature as []byte must not be empty")
+
+	file, err := ioutil.TempFile(dir, fmt.Sprintf("%s.txt", signName))
+	assert.NoError(t, err, "failed to create new temp file")
+
+	defer file.Close()
+
+	bufferedWriter := bufio.NewWriter(file)
+	n, err := bufferedWriter.Write(sBytes)
+	assert.NoError(t, err, "must be able to write signature data to buffer of %s", signName)
+	logger.Debugf("total bytes written for %s: %v", signName, n)
+	err = bufferedWriter.Flush()
+	assert.NoError(t, err, "must be able to flush signature data from buffer of %s", signName)
+}
+
+func TestMarshalUnMarshalCfgSignatures(t *testing.T) {
+	// setup
+	ctx := setupTestContext("test", "Org1MSP")
+	cc := setupResMgmtClient(t, ctx)
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+	configReader, err := getReaderFromPath(channelConfigTxPath)
+	assert.NoError(t, err, "Failed to create reader for the config %s", channelConfigTxPath)
+
+	sig, err := cc.CreateConfigSignatureFromReader(ctx.SigningIdentity, configReader)
+	assert.NoError(t, err, "failed to create Msp1 ConfigSignature")
+	mSig, err := MarshalConfigSignature(sig)
+	assert.NoError(t, err, "failed to marshal Msp1 ConfigSignature")
+
+	file, err := ioutil.TempFile("", "signature.txt")
+	assert.NoError(t, err, "failed to create new temp file")
+	defer file.Close()
+
+	bufferedWriter := bufio.NewWriter(file)
+	_, err = bufferedWriter.Write(mSig)
+	assert.NoError(t, err, "must be able to write Org1MSP signatures to buf")
+
+	bufferedWriter.Flush()
+
+	f, err := os.Open(file.Name())
+	assert.NoError(t, err, "opening signature file failed")
+	defer f.Close()
+	defer os.Remove(f.Name())
+
+	r := bufio.NewReader(f)
+
+	b, err := UnmarshalConfigSignature(r)
+	//logger.Warnf("unmarshalledConigSignature: %s", b)
+	assert.NoError(t, err, "error unmarshaling signatures")
+	assert.NotNil(t, b, "nil configSignature returned")
+	assert.EqualValues(t, b.SignatureHeader, sig.SignatureHeader, "Marshaled signature did not match the one build from the unmarshaled copy")
+
+	// test prep call for external signature signing
+	cfd, e := cc.CreateConfigSignatureDataFromReader(ctx.SigningIdentity, configReader)
+	assert.NoError(t, e, "getting config info for external signing failed")
+	assert.NotEmpty(t, cfd.SignatureHeader, "getting signing header is not supposed to be empty")
+	assert.NotEmpty(t, cfd.SigningBytes, "getting signing bytes is not supposed to be empty")
 }
 
 func TestJoinChannelWithInvalidOpts(t *testing.T) {
@@ -1197,6 +1559,7 @@ func TestSaveChannelWithMultipleSigningIdenities(t *testing.T) {
 	defer mb.Stop()
 
 	ctx := setupTestContext("test", "Org1MSP")
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
 
 	mockConfig := &fcmocks.MockConfig{}
 	grpcOpts := make(map[string]interface{})
@@ -1206,6 +1569,7 @@ func TestSaveChannelWithMultipleSigningIdenities(t *testing.T) {
 		URL:         addr,
 		GRPCOptions: grpcOpts,
 	}
+
 	mockConfig.SetCustomRandomOrdererCfg(oConfig)
 	mockConfig.SetCustomOrdererCfg(oConfig)
 	ctx.SetEndpointConfig(mockConfig)
@@ -1213,7 +1577,7 @@ func TestSaveChannelWithMultipleSigningIdenities(t *testing.T) {
 	cc := setupResMgmtClient(t, ctx)
 
 	// empty list of signing identities (defaults to context user)
-	r1, err := os.Open(channelConfig)
+	r1, err := os.Open(channelConfigTxPath)
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r1.Close()
 
@@ -1223,7 +1587,7 @@ func TestSaveChannelWithMultipleSigningIdenities(t *testing.T) {
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
 
 	// multiple signing identities
-	r2, err := os.Open(channelConfig)
+	r2, err := os.Open(channelConfigTxPath)
 	assert.Nil(t, err, "opening channel config file failed")
 	defer r2.Close()
 
@@ -1232,6 +1596,53 @@ func TestSaveChannelWithMultipleSigningIdenities(t *testing.T) {
 	resp, err = cc.SaveChannel(req, WithOrdererEndpoint(""))
 	assert.Nil(t, err, "Failed to save channel with multiple signing identities: %s", err)
 	assert.NotEmpty(t, resp.TransactionID, "transaction ID should be populated")
+}
+
+func TestGetConfigSignaturesFromIdentities(t *testing.T) {
+	ctx := setupTestContext("test", "Org1MSP")
+	cc := setupResMgmtClient(t, ctx)
+	channelConfigTxPath := filepath.Join(metadata.GetProjectPath(), metadata.ChannelConfigPath, channelConfigTxFile)
+
+	configReader, err := getReaderFromPath(channelConfigTxPath)
+	assert.NoError(t, err, "Failed to create reader for the config %s", channelConfigTxPath)
+
+	signature, err := cc.CreateConfigSignatureFromReader(ctx.SigningIdentity, configReader)
+	assert.NoError(t, err, "CreateSignaturesFromCfgPath failed")
+	//t.Logf("Signature: %s", signature)
+	assert.NotNil(t, signature, "signatures must not be empty")
+}
+
+func TestCheckRequiredCCProposalParams(t *testing.T) {
+	// Valid request
+	ccPolicy := cauthdsl.SignedByMspMember("Org1MSP")
+	req := InstantiateCCRequest{Name: "name", Version: "version", Path: "path", Policy: ccPolicy}
+
+	// Test empty channel lang
+	checkRequiredCCProposalParams("mychannel", &req)
+	if req.Lang != pb.ChaincodeSpec_GOLANG {
+		t.Fatal("Lang must be equal to golang", req.Lang)
+	}
+
+	// Test channel lang with golang
+	req = InstantiateCCRequest{Name: "name", Version: "version", Lang: pb.ChaincodeSpec_GOLANG, Path: "path", Policy: ccPolicy}
+	checkRequiredCCProposalParams("mychannel", &req)
+	if req.Lang != pb.ChaincodeSpec_GOLANG {
+		t.Fatal("Lang must be equal to golang")
+	}
+
+	// Test channel lang with java
+	req = InstantiateCCRequest{Name: "name", Version: "version", Lang: pb.ChaincodeSpec_JAVA, Path: "path", Policy: ccPolicy}
+	checkRequiredCCProposalParams("mychannel", &req)
+	if req.Lang != pb.ChaincodeSpec_JAVA {
+		t.Fatal("Lang must be equal to java")
+	}
+
+	// Test channel lang with unknown
+	req = InstantiateCCRequest{Name: "name", Version: "version", Lang: 11, Path: "path", Policy: ccPolicy}
+	checkRequiredCCProposalParams("mychannel", &req)
+	if req.Lang != pb.ChaincodeSpec_GOLANG {
+		t.Fatal("Lang must be equal to golang", req.Lang)
+	}
 }
 
 func createClientContext(fabCtx context.Client) context.ClientProvider {

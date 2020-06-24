@@ -16,12 +16,11 @@
  *
  */
 
-//go:generate protoc -I ../grpc_testing --go_out=plugins=grpc:../grpc_testing ../grpc_testing/metrics.proto
-
 // client starts an interop client to do stress test and a metrics server to report qps.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -31,7 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -53,7 +51,7 @@ var (
 	useTLS               = flag.Bool("use_tls", false, "Connection uses TLS if true, else plain TCP")
 	testCA               = flag.Bool("use_test_ca", false, "Whether to replace platform root CAs with test CA as the CA root")
 	tlsServerName        = flag.String("server_host_override", "foo.test.google.fr", "The server name use to verify the hostname returned by TLS handshake if it is not empty. Otherwise, --server_host is used.")
-	caFile               = flag.String("ca_file", "", "The file containning the CA root cert file")
+	caFile               = flag.String("ca_file", "", "The file containing the CA root cert file")
 )
 
 // testCaseWithWeight contains the test case type and its weight.
@@ -146,6 +144,7 @@ func (g *gauge) get() int64 {
 
 // server implements metrics server functions.
 type server struct {
+	metricspb.UnimplementedMetricsServiceServer
 	mutex sync.RWMutex
 	// gauges is a map from /stress_test/server_<n>/channel_<n>/stub_<n>/qps to its qps gauge.
 	gauges map[string]*gauge
@@ -215,27 +214,27 @@ func performRPCs(gauge *gauge, conn *grpc.ClientConn, selector *weightedRandomTe
 		test := selector.getNextTest()
 		switch test {
 		case "empty_unary":
-			interop.DoEmptyUnaryCall(client, grpc.FailFast(false))
+			interop.DoEmptyUnaryCall(client, grpc.WaitForReady(true))
 		case "large_unary":
-			interop.DoLargeUnaryCall(client, grpc.FailFast(false))
+			interop.DoLargeUnaryCall(client, grpc.WaitForReady(true))
 		case "client_streaming":
-			interop.DoClientStreaming(client, grpc.FailFast(false))
+			interop.DoClientStreaming(client, grpc.WaitForReady(true))
 		case "server_streaming":
-			interop.DoServerStreaming(client, grpc.FailFast(false))
+			interop.DoServerStreaming(client, grpc.WaitForReady(true))
 		case "ping_pong":
-			interop.DoPingPong(client, grpc.FailFast(false))
+			interop.DoPingPong(client, grpc.WaitForReady(true))
 		case "empty_stream":
-			interop.DoEmptyStream(client, grpc.FailFast(false))
+			interop.DoEmptyStream(client, grpc.WaitForReady(true))
 		case "timeout_on_sleeping_server":
-			interop.DoTimeoutOnSleepingServer(client, grpc.FailFast(false))
+			interop.DoTimeoutOnSleepingServer(client, grpc.WaitForReady(true))
 		case "cancel_after_begin":
-			interop.DoCancelAfterBegin(client, grpc.FailFast(false))
+			interop.DoCancelAfterBegin(client, grpc.WaitForReady(true))
 		case "cancel_after_first_response":
-			interop.DoCancelAfterFirstResponse(client, grpc.FailFast(false))
+			interop.DoCancelAfterFirstResponse(client, grpc.WaitForReady(true))
 		case "status_code_and_message":
-			interop.DoStatusCodeAndMessage(client, grpc.FailFast(false))
+			interop.DoStatusCodeAndMessage(client, grpc.WaitForReady(true))
 		case "custom_metadata":
-			interop.DoCustomMetadata(client, grpc.FailFast(false))
+			interop.DoCustomMetadata(client, grpc.WaitForReady(true))
 		}
 		numCalls++
 		gauge.set(int64(float64(numCalls) / time.Since(startTime).Seconds()))
